@@ -1,46 +1,32 @@
 import streamlit as st
 import requests
 
-st.set_page_config(page_title="EUR/USD Signal App", layout="centered")
-
+st.set_page_config(page_title="EUR/USD Signal Dashboard")
 st.title("📉 EUR/USD Signal Dashboard")
 
 API_KEY = "FK2HKXD52BOMUD12"
 symbol = "EURUSD"
 interval = "1min"
-url = f"https://www.alphavantage.co/query?function=FX_INTRADAY&from_symbol=EUR&to_symbol=USD&interval={interval}&apikey={API_KEY}"
+url = f"https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&symbol={symbol}&interval={interval}&apikey={API_KEY}"
 
 @st.cache_data(ttl=60)
 def fetch_data():
-    response = requests.get(url)
-    if response.status_code != 200:
-        return None
-    data = response.json()
     try:
-        time_series = data[f"Time Series FX ({interval})"]
-        latest_timestamp = list(time_series.keys())[0]
-        latest_data = time_series[latest_timestamp]
-        close_price = float(latest_data["4. close"])
-        return {
-            "timestamp": latest_timestamp,
-            "close": close_price
-        }
-    except KeyError:
+        response = requests.get(url)
+        if response.status_code != 200:
+            st.error(f"❌ HTTP Error: {response.status_code}")
+            return None
+        data = response.json()
+        if "Time Series" not in str(data):
+            st.warning(f"⚠️ API Response Error: {data}")
+            return None
+        return data
+    except Exception as e:
+        st.error(f"🚨 Exception: {str(e)}")
         return None
 
 data = fetch_data()
-
-if data:
-    st.markdown(f"**Date:** {data['timestamp']}")
-    st.markdown(f"**Close:** {data['close']}")
-    
-    # مثال على إشارة بسيطة جداً
-    if data["close"] > 1.09:
-        st.success("📈 Final Signal: BUY")
-    elif data["close"] < 1.08:
-        st.error("📉 Final Signal: SELL")
-    else:
-        st.info("📍 Final Signal: NO TRADE")
-
-else:
+if data is None:
     st.warning("⚠️ تعذر جلب البيانات من API.")
+else:
+    st.success("✅ تم جلب البيانات بنجاح.")
